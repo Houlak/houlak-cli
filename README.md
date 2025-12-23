@@ -1,10 +1,15 @@
 # Houlak CLI
 
-A command-line tool to simplify database connections through AWS Session Manager.
+A comprehensive command-line tool suite for developers to interact with AWS services.
 
 ## Overview
 
-`houlak-cli` is a developer-friendly tool that abstracts the complexity of connecting to RDS databases through AWS Session Manager. No need to understand AWS internals - just run a simple command and connect.
+`houlak-cli` is a developer-friendly toolkit that provides multiple tools for interacting with AWS services. The tool abstracts the complexity of AWS operations, allowing developers to focus on their work without needing to understand AWS internals.
+
+Currently, `houlak-cli` includes:
+- **Database connections**: Connect to RDS databases through AWS Session Manager with a simple command
+
+More tools and commands will be added in the future to expand the capabilities of the CLI.
 
 ## Prerequisites
 
@@ -146,7 +151,9 @@ Show version information.
 
 ## How It Works
 
-`houlak-cli` uses AWS Session Manager to create a secure tunnel from your local machine to your RDS database through a bastion host. This approach:
+### Database Connections
+
+The `db-connect` command uses AWS Session Manager to create a secure tunnel from your local machine to your RDS database through a bastion host. This approach:
 
 - ✅ Eliminates the need for SSH keys
 - ✅ Doesn't require exposed SSH ports
@@ -154,6 +161,10 @@ Show version information.
 - ✅ Uses IAM-based authentication
 
 The database configurations are stored securely in AWS Systems Manager Parameter Store.
+
+### Future Tools
+
+Additional tools and commands will be added to `houlak-cli` to support various AWS operations and developer workflows.
 
 ## Troubleshooting
 
