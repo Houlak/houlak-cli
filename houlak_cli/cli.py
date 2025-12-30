@@ -65,30 +65,6 @@ def main_callback(
         console.print(welcome_message)
         sys.exit(0)
 
-console = Console()
-
-
-@app.callback()
-def main_callback(ctx: typer.Context):
-    """Main callback - shows welcome message if no command provided."""
-    if ctx.invoked_subcommand is None:
-        welcome_message = Panel.fit(
-            "[bold cyan]🚀 Welcome to Houlak CLI![/bold cyan]\n\n"
-            "A comprehensive toolkit for developers to interact with AWS services.\n\n"
-            "[yellow]Available commands:[/yellow]\n"
-            "  • [cyan]setup[/cyan] - Configure houlak-cli\n"
-            "  • [cyan]db-connect[/cyan] - Connect to a database\n"
-            "  • [cyan]db-list[/cyan] - List available databases\n"
-            "  • [cyan]config-current[/cyan] - Show current configuration\n"
-            "  • [cyan]config-list[/cyan] - List AWS profiles\n"
-            "  • [cyan]admin-db-add[/cyan] - Add database to Parameter Store (admin only)\n\n"
-            "[dim]Run 'houlak-cli --help' for more information[/dim]",
-            title="[bold]Houlak CLI[/bold]",
-            border_style="cyan",
-        )
-        console.print(welcome_message)
-        sys.exit(0)
-
 
 @app.command()
 def setup():
