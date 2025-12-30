@@ -19,33 +19,28 @@ app = typer.Typer(
     name="houlak-cli",
     help="Houlak CLI - Comprehensive AWS toolkit for developers",
     add_completion=False,
-    invoke_without_command=True,
 )
 
 console = Console()
 
 
-# Add version callback
-def version_callback(value: bool):
-    """Show version information."""
-    if value:
-        console.print(f"houlak-cli version {APP_VERSION}")
-        raise typer.Exit()
-
-
-@app.callback()
+@app.callback(invoke_without_command=True)
 def main_callback(
     ctx: typer.Context,
     version: bool = typer.Option(
-        None,
+        False,
         "--version",
         "-v",
         help="Show version information",
-        callback=version_callback,
-        is_eager=True,
     ),
 ):
     """Main callback - shows welcome message if no command provided."""
+    # Handle version flag first - this works even when a command is provided
+    if version:
+        console.print(f"houlak-cli version {APP_VERSION}")
+        raise typer.Exit()
+    
+    # Show welcome message if no command was provided
     if ctx.invoked_subcommand is None:
         welcome_message = Panel.fit(
             "[bold cyan]🚀 Welcome to Houlak CLI![/bold cyan]\n\n"
