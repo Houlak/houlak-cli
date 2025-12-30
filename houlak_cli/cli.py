@@ -10,6 +10,7 @@ from rich.panel import Panel
 from houlak_cli.admin import add_database_to_parameter_store, require_admin
 from houlak_cli.aws_helper import list_available_databases
 from houlak_cli.config import config
+from houlak_cli.constants import APP_VERSION
 from houlak_cli.db_connect import connect_to_database
 from houlak_cli.profile_helper import list_aws_profiles
 from houlak_cli.setup_wizard import run_setup_wizard
@@ -20,6 +21,49 @@ app = typer.Typer(
     add_completion=False,
     invoke_without_command=True,
 )
+
+console = Console()
+
+
+# Add version callback
+def version_callback(value: bool):
+    """Show version information."""
+    if value:
+        console.print(f"houlak-cli version {APP_VERSION}")
+        raise typer.Exit()
+
+
+@app.callback()
+def main_callback(
+    ctx: typer.Context,
+    version: bool = typer.Option(
+        None,
+        "--version",
+        "-v",
+        help="Show version information",
+        callback=version_callback,
+        is_eager=True,
+    ),
+):
+    """Main callback - shows welcome message if no command provided."""
+    if ctx.invoked_subcommand is None:
+        welcome_message = Panel.fit(
+            "[bold cyan]🚀 Welcome to Houlak CLI![/bold cyan]\n\n"
+            "A comprehensive toolkit for developers to interact with AWS services.\n\n"
+            "[yellow]Available commands:[/yellow]\n"
+            "  • [cyan]setup[/cyan] - Configure houlak-cli\n"
+            "  • [cyan]db-connect[/cyan] - Connect to a database\n"
+            "  • [cyan]db-list[/cyan] - List available databases\n"
+            "  • [cyan]config-current[/cyan] - Show current configuration\n"
+            "  • [cyan]config-list[/cyan] - List AWS profiles\n"
+            "  • [cyan]admin-db-add[/cyan] - Add database to Parameter Store (admin only)\n\n"
+            "[dim]Run 'houlak-cli --help' for more information[/dim]\n"
+            f"[dim]Version {APP_VERSION}[/dim]",
+            title="[bold]Houlak CLI[/bold]",
+            border_style="cyan",
+        )
+        console.print(welcome_message)
+        sys.exit(0)
 
 console = Console()
 

@@ -7,6 +7,7 @@ A comprehensive command-line tool suite for developers to interact with AWS serv
 `houlak-cli` is a developer-friendly toolkit that provides multiple tools for interacting with AWS services. The tool abstracts the complexity of AWS operations, allowing developers to focus on their work without needing to understand AWS internals.
 
 Currently, `houlak-cli` includes:
+
 - **Database connections**: Connect to RDS databases through AWS Session Manager with a simple command
 
 More tools and commands will be added in the future to expand the capabilities of the CLI.
@@ -22,6 +23,8 @@ Before using `houlak-cli`, you need:
 
 ## Installation
 
+### First-time Installation
+
 Install directly from GitHub:
 
 ```bash
@@ -34,6 +37,30 @@ Or clone and install in development mode:
 git clone https://github.com/Houlak/houlak-cli.git
 cd houlak-cli
 pip install -e .
+```
+
+### Updating to Latest Version
+
+If you already have `houlak-cli` installed, update it with:
+
+```bash
+pip install --upgrade git+https://github.com/Houlak/houlak-cli.git
+```
+
+Or if installed in development mode:
+
+```bash
+cd houlak-cli
+git pull origin main
+pip install -e .
+```
+
+### Check Current Version
+
+Check which version you have installed:
+
+```bash
+houlak-cli --version
 ```
 
 ## Quick Start
@@ -153,9 +180,14 @@ houlak-cli admin-db-add hk-postgres-dev \
 
 Show help for all commands.
 
-### `houlak-cli --version`
+### `houlak-cli --version` or `houlak-cli -v`
 
 Show version information.
+
+```bash
+houlak-cli --version
+# Output: houlak-cli version 0.1.0
+```
 
 ## How It Works
 
@@ -219,5 +251,3 @@ MIT License - See LICENSE file for details.
 ## Support
 
 For issues or questions, contact the DevOps team or open an issue in the repository.
-
-
