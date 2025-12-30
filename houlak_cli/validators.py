@@ -215,3 +215,5 @@ def check_all_prerequisites(profile: str = "houlak") -> Dict[str, bool]:
     
     console.print()
     return results
+
+

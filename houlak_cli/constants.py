@@ -10,6 +10,8 @@ APP_VERSION = "0.1.0"
 DEFAULT_REGION = "us-east-1"
 DEFAULT_PROFILE = "houlak"
 PARAMETER_STORE_PREFIX = "/houlak/cli/databases"
+ADMINS_PARAMETER = "/houlak/cli/admins"
+DEFAULT_ADMINS = ["eperroud", "gfranco"]
 
 # Local configuration
 CONFIG_DIR = Path.home() / f".{APP_NAME}"
@@ -43,3 +45,5 @@ SSM_PLUGIN_INSTALL_URL = "https://docs.aws.amazon.com/systems-manager/latest/use
 # AWS SSO Configuration
 DEFAULT_SSO_START_URL = "https://houlak.awsapps.com/start"
 DEFAULT_SSO_REGION = "us-east-1"
+
+

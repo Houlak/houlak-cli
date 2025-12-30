@@ -178,3 +178,5 @@ Remember the database naming convention:
 **Ready to complete the project!** 🚀
 
 Open `GENERATION_PROMPT.md` and follow the instructions.
+
+

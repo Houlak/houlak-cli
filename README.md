@@ -18,6 +18,7 @@ Before using `houlak-cli`, you need:
 - **Python 3.8+**
 - **AWS CLI v2** - [Installation Guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
 - **AWS Session Manager Plugin** - [Installation Guide](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html)
+- **AWS Profile Configuration** - `houlak-cli` is based on AWS profiles configured locally in `~/.aws/config`. The first step is to have your AWS profile configured for the account you want to connect to. You can configure it manually or use the `setup` command.
 
 ## Installation
 
@@ -39,6 +40,8 @@ pip install -e .
 
 ### 1. Initial Setup
 
+**Important**: `houlak-cli` is based on AWS profiles configured locally in `~/.aws/config`. The first step is to have your AWS profile configured for the account you want to connect to.
+
 Run the setup wizard to configure your AWS profile:
 
 ```bash
@@ -48,8 +51,8 @@ houlak-cli setup
 The wizard will guide you through:
 
 - Checking prerequisites (AWS CLI, Session Manager Plugin)
-- Configuring your AWS profile
-- Testing your connection
+- Configuring your AWS profile in `~/.aws/config`
+- Testing your connection to Parameter Store
 
 ### 2. Connect to a Database
 
@@ -106,39 +109,44 @@ houlak-cli db-connect mariadb --env dev --port 33061
 houlak-cli db-connect --env qa --profile my-profile
 ```
 
-### `houlak-cli list [--profile PROFILE]`
+### `houlak-cli db-list [--profile PROFILE]`
 
 List all available databases from Parameter Store.
 
 ```bash
-houlak-cli list
-houlak-cli list --profile my-profile
+houlak-cli db-list
+houlak-cli db-list --profile my-profile
 ```
 
-### `houlak-cli check [--profile PROFILE]`
+### `houlak-cli config-current`
 
-Check prerequisites and configuration status.
+Display current houlak-cli configuration.
 
 ```bash
-houlak-cli check
-houlak-cli check --profile my-profile
+houlak-cli config-current
 ```
 
-### `houlak-cli config show`
+### `houlak-cli config-list`
 
-Display current configuration.
+List all AWS profiles configured locally.
 
 ```bash
-houlak-cli config show
+houlak-cli config-list
 ```
 
-### `houlak-cli config set KEY VALUE`
+### `houlak-cli admin-db-add` (Admin only)
 
-Set a configuration value.
+Add a database configuration to Parameter Store. Requires admin privileges.
 
 ```bash
-houlak-cli config set default_profile houlak
-houlak-cli config set default_port 54320
+houlak-cli admin-db-add hk-postgres-dev \
+  --project hk \
+  --engine postgres \
+  --env dev \
+  --bastion i-1234567890abcdef0 \
+  --rds-endpoint hk-postgres-dev.region.rds.amazonaws.com \
+  --rds-port 5432 \
+  --region us-east-1
 ```
 
 ### `houlak-cli --help`
@@ -197,7 +205,7 @@ houlak-cli db-connect --env dev --port 54321
 Check available databases:
 
 ```bash
-houlak-cli list
+houlak-cli db-list
 ```
 
 ## Contributing
@@ -211,3 +219,5 @@ MIT License - See LICENSE file for details.
 ## Support
 
 For issues or questions, contact the DevOps team or open an issue in the repository.
+
+

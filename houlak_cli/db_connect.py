@@ -92,7 +92,7 @@ def connect_to_database(
     
     if not db_config:
         console.print(f"❌ Database '{database_name}' not found in Parameter Store")
-        console.print("\n💡 Tip: Use 'houlak-cli list' to see available databases")
+        console.print("\n💡 Tip: Use 'houlak-cli db-list' to see available databases")
         sys.exit(1)
     
     # Extract configuration values

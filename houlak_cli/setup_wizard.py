@@ -102,6 +102,8 @@ def run_setup_wizard() -> None:
     """Run the interactive setup wizard."""
     console.print("\n🚀 [bold]Houlak CLI Setup Wizard[/bold]\n")
     console.print("This wizard will help you configure houlak-cli for first-time use.\n")
+    console.print("[yellow]ℹ️  Important:[/yellow] houlak-cli is based on AWS profiles configured locally.")
+    console.print("This wizard will help you create an AWS profile in ~/.aws/config.\n")
     
     # Step 1: AWS Profile Configuration
     console.print("[bold cyan]Step 1: AWS Profile Configuration[/bold cyan]\n")
@@ -218,4 +220,6 @@ def run_setup_wizard() -> None:
     console.print("\nYou can now use houlak-cli to connect to databases.")
     console.print("Try: [cyan]houlak-cli list[/cyan] to see available databases.")
     console.print("=" * 60 + "\n")
+
+
 

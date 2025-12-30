@@ -83,3 +83,5 @@ class TestCLICommands:
         assert result.exit_code == 0
         mock_config.set.assert_called_once_with("test.key", "test.value")
 
+
+
