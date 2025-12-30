@@ -180,11 +180,13 @@ houlak-cli admin-db-add hk-postgres-dev \
 
 Show help for all commands.
 
-### `houlak-cli --version` or `houlak-cli -v`
+### `houlak-cli version` or `houlak-cli --version` or `houlak-cli -v`
 
 Show version information.
 
 ```bash
+houlak-cli version
+# or
 houlak-cli --version
 # Output: houlak-cli version 0.1.0
 ```
