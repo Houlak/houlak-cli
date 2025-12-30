@@ -61,6 +61,12 @@ def main_callback(
         sys.exit(0)
 
 
+@app.command(name="version")
+def version_command():
+    """Show version information."""
+    console.print(f"houlak-cli version {APP_VERSION}")
+
+
 @app.command()
 def setup():
     """Run setup wizard to configure houlak-cli."""
