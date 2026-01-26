@@ -19,6 +19,7 @@ app = typer.Typer(
     name="houlak-cli",
     help="Houlak CLI - Comprehensive AWS toolkit for developers",
     add_completion=False,
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 
 console = Console()
@@ -45,14 +46,16 @@ def main_callback(
         welcome_message = Panel.fit(
             "[bold cyan]🚀 Welcome to Houlak CLI![/bold cyan]\n\n"
             "A comprehensive toolkit for developers to interact with AWS services.\n\n"
-            "[yellow]Available commands:[/yellow]\n"
-            "  • [cyan]setup[/cyan] - Configure houlak-cli\n"
-            "  • [cyan]db-connect[/cyan] - Connect to a database\n"
-            "  • [cyan]db-list[/cyan] - List available databases\n"
-            "  • [cyan]config-current[/cyan] - Show current configuration\n"
-            "  • [cyan]config-list[/cyan] - List AWS profiles\n"
-            "  • [cyan]admin-db-add[/cyan] - Add database to Parameter Store (admin only)\n\n"
-            "[dim]Run 'houlak-cli --help' for more information[/dim]\n"
+            "[yellow]Configuration Commands:[/yellow]\n"
+            "  • [cyan]config[/cyan] - Configure AWS profile for houlak-cli\n"
+            "  • [cyan]config-list[/cyan] - List AWS profiles configured locally\n"
+            "  • [cyan]config-current[/cyan] - Show current AWS profile configuration\n\n"
+            "[yellow]Database Commands:[/yellow]\n"
+            "  • [cyan]db-connect[/cyan] - Connect to a database using its name from Parameter Store\n"
+            "  • [cyan]db-list[/cyan] - List available databases\n\n"
+            "[yellow]Admin Commands:[/yellow]\n"
+            "  • [cyan]admin-db-add[/cyan] - Add database configuration to Parameter Store (admin only)\n\n"
+            "[dim]Run 'houlak-cli --help' or 'houlak-cli -h' for more information[/dim]\n"
             f"[dim]Version {APP_VERSION}[/dim]",
             title="[bold]Houlak CLI[/bold]",
             border_style="cyan",
@@ -61,33 +64,71 @@ def main_callback(
         sys.exit(0)
 
 
-@app.command(name="version")
-def version_command():
-    """Show version information."""
-    console.print(f"houlak-cli version {APP_VERSION}")
-
-
 @app.command()
-def setup():
-    """Run setup wizard to configure houlak-cli."""
+def config():
+    """Run setup wizard to configure AWS profile for houlak-cli."""
     run_setup_wizard()
+
+
+@app.command(name="config-current")
+def config_current():
+    """Show current AWS profile configuration for houlak-cli."""
+    config.show()
+
+
+@app.command(name="config-list")
+def config_list():
+    """List all AWS profiles configured locally in ~/.aws/config."""
+    console.print("\n🔍 [bold]AWS Profiles Configured Locally[/bold]\n")
+    
+    profiles = list_aws_profiles()
+    
+    if not profiles:
+        console.print("⚠️  No AWS profiles found.")
+        console.print("\n💡 Tip: Configure an AWS profile first:")
+        console.print("   - Run 'houlak-cli setup' to configure a profile")
+        console.print("   - Or manually edit ~/.aws/config")
+        return
+    
+    from rich.table import Table
+    
+    table = Table(title="AWS Profiles")
+    table.add_column("Profile Name", style="cyan")
+    table.add_column("SSO Start URL", style="green")
+    table.add_column("Account ID", style="yellow")
+    table.add_column("Role Name", style="magenta")
+    table.add_column("Region", style="blue")
+    
+    from houlak_cli.profile_helper import get_profile_info
+    
+    for profile_name in profiles:
+        info = get_profile_info(profile_name)
+        if info:
+            table.add_row(
+                profile_name,
+                info.get("sso_start_url", "N/A"),
+                info.get("sso_account_id", "N/A"),
+                info.get("sso_role_name", "N/A"),
+                info.get("region", "N/A"),
+            )
+        else:
+            table.add_row(profile_name, "N/A", "N/A", "N/A", "N/A")
+    
+    console.print(table)
+    console.print(f"\n💡 Use a profile: [cyan]houlak-cli db-connect --profile <profile-name> --env <env>[/cyan]")
 
 
 @app.command()
 def db_connect(
-    engine: str = typer.Argument("postgres", help="Database engine (postgres/mariadb)"),
-    env: str = typer.Option(..., "--env", "-e", help="Environment (dev/qa/prod)"),
-    port: Optional[int] = typer.Option(None, "--port", "-p", help="Local port"),
-    profile: str = typer.Option("houlak", "--profile", help="AWS profile"),
-    project: Optional[str] = typer.Option(None, "--project", help="Project name"),
+    database_name: str = typer.Option(..., "--database", "-d", help="Database name from Parameter Store"),
+    profile: str = typer.Option("houlak", "--profile", help="AWS profile to use"),
+    port: Optional[int] = typer.Option(None, "--port", "-p", help="Local port (optional, uses default based on engine)"),
 ):
-    """Connect to database through Session Manager."""
+    """Connect to database through Session Manager via bastion host."""
     connect_to_database(
-        engine=engine,
-        env=env,
-        port=port,
+        database_name=database_name,
         profile=profile,
-        project=project,
+        port=port,
     )
 
 
@@ -95,7 +136,7 @@ def db_connect(
 def db_list(
     profile: str = typer.Option("houlak", "--profile", help="AWS profile"),
 ):
-    """List available databases."""
+    """List available databases from Parameter Store."""
     console.print("\n🔍 [bold]Listing available databases...[/bold]\n")
     
     databases = list_available_databases(profile)
@@ -152,88 +193,28 @@ def db_list(
 #     
 #     console.print("=" * 60 + "\n")
 
-
-@app.command(name="config-current")
-def config_current():
-    """Show current houlak-cli configuration."""
-    config.show()
-
-
-@app.command(name="config-list")
-def config_list():
-    """List all AWS profiles configured locally."""
-    console.print("\n🔍 [bold]AWS Profiles Configured Locally[/bold]\n")
-    
-    profiles = list_aws_profiles()
-    
-    if not profiles:
-        console.print("⚠️  No AWS profiles found.")
-        console.print("\n💡 Tip: Configure an AWS profile first:")
-        console.print("   - Run 'houlak-cli setup' to configure a profile")
-        console.print("   - Or manually edit ~/.aws/config")
-        return
-    
-    from rich.table import Table
-    
-    table = Table(title="AWS Profiles")
-    table.add_column("Profile Name", style="cyan")
-    table.add_column("SSO Start URL", style="green")
-    table.add_column("Account ID", style="yellow")
-    table.add_column("Role Name", style="magenta")
-    table.add_column("Region", style="blue")
-    
-    from houlak_cli.profile_helper import get_profile_info
-    
-    for profile_name in profiles:
-        info = get_profile_info(profile_name)
-        if info:
-            table.add_row(
-                profile_name,
-                info.get("sso_start_url", "N/A"),
-                info.get("sso_account_id", "N/A"),
-                info.get("sso_role_name", "N/A"),
-                info.get("region", "N/A"),
-            )
-        else:
-            table.add_row(profile_name, "N/A", "N/A", "N/A", "N/A")
-    
-    console.print(table)
-    console.print(f"\n💡 Use a profile: [cyan]houlak-cli db-connect --profile <profile-name> --env <env>[/cyan]")
-
-
 # Admin commands
 @app.command(name="admin-db-add")
 def admin_db_add(
-    database_name: str = typer.Argument(..., help="Database name (e.g., hk-postgres-dev)"),
-    project: str = typer.Option(..., "--project", help="Project name"),
-    engine: str = typer.Option(..., "--engine", help="Database engine (postgres/mariadb)"),
-    environment: str = typer.Option(..., "--env", help="Environment (dev/qa/prod)"),
-    bastion_instance_id: str = typer.Option(..., "--bastion", help="Bastion EC2 instance ID"),
-    rds_endpoint: str = typer.Option(..., "--rds-endpoint", help="RDS endpoint"),
-    rds_port: int = typer.Option(..., "--rds-port", help="RDS port"),
-    region: str = typer.Option("us-east-1", "--region", help="AWS region"),
-    profile: str = typer.Option("houlak", "--profile", help="AWS profile"),
+    profile: str = typer.Option("houlak", "--profile", help="AWS profile to use for storing configuration"),
 ):
     """Add a database configuration to Parameter Store (admin only)."""
+    from houlak_cli.admin import prompt_for_database_config
+
+    # Check admin privileges first
     if not require_admin(profile):
         sys.exit(1)
+
+    # Interactive database configuration
+    db_config = prompt_for_database_config()
     
-    console.print(f"\n➕ [bold]Adding database '{database_name}' to Parameter Store[/bold]\n")
-    
-    db_config = {
-        "project": project,
-        "engine": engine,
-        "environment": environment,
-        "bastionInstanceId": bastion_instance_id,
-        "rdsEndpoint": rds_endpoint,
-        "rdsPort": rds_port,
-        "region": region,
-    }
-    
-    if add_database_to_parameter_store(database_name, db_config, profile):
-        console.print(f"\n✅ Database '{database_name}' successfully added!")
+    console.print(f"\n➕ [bold]Adding database '{db_config['name']}' to Parameter Store[/bold]\n")
+
+    if add_database_to_parameter_store(db_config['name'], db_config, profile):
+        console.print(f"\n✅ Database '{db_config['name']}' successfully added!")
+        console.print(f"\n💡 Developers can now connect using: [cyan]houlak-cli db-connect --database {db_config['name']} --profile <their-profile>[/cyan]")
     else:
-        console.print(f"\n❌ Failed to add database '{database_name}'")
+        console.print(f"\n❌ Failed to add database '{db_config['name']}'")
         sys.exit(1)
 
 

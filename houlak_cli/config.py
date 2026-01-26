@@ -165,12 +165,14 @@ class Config:
         if self.data:
             add_rows(self.data)
         else:
-            table.add_row("No configuration", "Run 'houlak-cli setup' first")
+            table.add_row("No configuration", "Run 'houlak-cli config' first")
         
         console.print(table)
 
 
 # Global config instance
 config = Config()
+
+
 
 

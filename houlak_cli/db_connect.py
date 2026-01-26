@@ -1,11 +1,15 @@
 """Database connection module for houlak-cli."""
 
+import os
 import signal
+import subprocess
 import sys
+import threading
+import time
 from typing import Optional
 
 from rich.console import Console
-from rich.prompt import Prompt, Confirm
+from rich.prompt import Confirm
 
 from houlak_cli.aws_helper import (
     execute_sso_login,
@@ -44,36 +48,18 @@ def build_database_name(project: str, engine: str, env: str) -> str:
 
 
 def connect_to_database(
-    engine: str = DEFAULT_ENGINE,
-    env: str = None,
-    port: Optional[int] = None,
+    database_name: str,
     profile: str = "houlak",
-    project: Optional[str] = None,
+    port: Optional[int] = None,
 ) -> None:
     """
     Connect to database through Session Manager.
     
     Args:
-        engine: Database engine (postgres/mariadb)
-        env: Environment (dev/qa/prod)
-        port: Local port (optional)
+        database_name: Database name from Parameter Store
         profile: AWS profile
-        project: Project name (optional, will be prompted if not provided)
+        port: Local port (optional)
     """
-    if not env:
-        console.print("❌ Environment (--env) is required")
-        sys.exit(1)
-    
-    # Get project name if not provided
-    if not project:
-        project = Prompt.ask("[cyan]Enter project name[/cyan]", default="").strip()
-        if not project:
-            console.print("❌ Project name is required")
-            sys.exit(1)
-    
-    # Build database name
-    database_name = build_database_name(project, engine, env)
-    
     console.print(f"\n🔍 Looking for database: [cyan]{database_name}[/cyan]\n")
     
     # Validate AWS session
@@ -100,6 +86,8 @@ def connect_to_database(
     rds_endpoint = db_config.get("rdsEndpoint")
     rds_port = db_config.get("rdsPort")
     region = db_config.get("region", "us-east-1")
+    engine = db_config.get("engine", "postgres")
+    environment = db_config.get("environment", "unknown")
     
     if not bastion_instance_id or not rds_endpoint or not rds_port:
         console.print("❌ Invalid database configuration. Missing required fields.")
@@ -172,7 +160,7 @@ def connect_to_database(
         config.save_last_connection(
             database=database_name,
             engine=engine,
-            env=env,
+            env=environment,
             port=port,
             profile=profile,
         )
@@ -187,20 +175,59 @@ def connect_to_database(
         console.print("=" * 60 + "\n")
         
         # Set up signal handler for graceful shutdown
+        shutdown_event = threading.Event()
+        
         def signal_handler(sig, frame):
+            if shutdown_event.is_set():
+                # Already shutting down, force exit
+                console.print("\n🛑 Force exiting...")
+                os._exit(1)
+            
+            shutdown_event.set()
             console.print("\n\n🛑 Stopping tunnel...")
-            process.terminate()
-            process.wait()
-            console.print("✅ Tunnel stopped")
-            sys.exit(0)
+            
+            try:
+                # Try graceful termination first
+                process.terminate()
+                
+                # Wait up to 3 seconds for graceful termination
+                for i in range(30):  # 30 * 0.1 = 3 seconds
+                    if process.poll() is not None:
+                        break
+                    time.sleep(0.1)
+                
+                # If still running, force kill
+                if process.poll() is None:
+                    console.print("⚠️  Force terminating...")
+                    process.kill()
+                    process.wait(timeout=1)
+                
+                console.print("✅ Tunnel stopped")
+                
+            except (subprocess.TimeoutExpired, OSError, ProcessLookupError):
+                # Process already terminated or killed
+                console.print("✅ Tunnel stopped")
+            except Exception as e:
+                console.print(f"⚠️  Error stopping tunnel: {e}")
+            finally:
+                sys.exit(0)
         
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
         
-        # Keep tunnel open (block until Ctrl+C)
+        # Keep tunnel open (block until Ctrl+C or process ends)
         try:
-            process.wait()
+            # Wait for process to finish naturally
+            return_code = process.wait()
+            if return_code != 0:
+                console.print(f"\n⚠️  Tunnel process ended with code {return_code}")
+            else:
+                console.print("\n✅ Tunnel ended naturally")
+            
         except KeyboardInterrupt:
+            signal_handler(None, None)
+        except Exception as e:
+            console.print(f"\n❌ Unexpected error: {e}")
             signal_handler(None, None)
         
     except Exception as e:

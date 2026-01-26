@@ -218,7 +218,7 @@ def run_setup_wizard() -> None:
     console.print(f"Region: {region}")
     console.print(f"Databases Found: {len(databases)}")
     console.print("\nYou can now use houlak-cli to connect to databases.")
-    console.print("Try: [cyan]houlak-cli list[/cyan] to see available databases.")
+    console.print("Try: [cyan]houlak-cli db-list[/cyan] to see available databases.")
     console.print("=" * 60 + "\n")
 
 

@@ -171,6 +171,38 @@ def require_admin(profile: str = DEFAULT_PROFILE) -> bool:
     
     return True
 
+from rich.prompt import Prompt
+
+def prompt_for_database_config():
+    """
+    Prompt user interactively for database configuration details.
+    Returns database_config_dict with database name included.
+    """
+    console.print("\n[bold cyan]🔧 Database Configuration Setup[/bold cyan]\n")
+    console.print("[dim]Please provide the following information to add a new database to Parameter Store.[/dim]\n")
+
+    database_name = Prompt.ask("Database name (e.g., hk-postgres-dev)").strip()
+    project = Prompt.ask("Project name").strip()
+    engine = Prompt.ask("Database engine", choices=["postgres", "mariadb"], default="postgres")
+    environment = Prompt.ask("Environment", choices=["dev", "qa", "prod"])
+    bastion_instance_id = Prompt.ask("Bastion EC2 instance ID (e.g., i-1234567890abcdef0)").strip()
+    rds_endpoint = Prompt.ask("RDS endpoint").strip()
+    rds_port = int(Prompt.ask("RDS port", default="5432"))
+    region = Prompt.ask("AWS region", default=DEFAULT_REGION).strip()
+
+    db_config = {
+        "name": database_name,
+        "project": project,
+        "engine": engine,
+        "environment": environment,
+        "bastionInstanceId": bastion_instance_id,
+        "rdsEndpoint": rds_endpoint,
+        "rdsPort": rds_port,
+        "region": region,
+    }
+
+    return db_config
+
 
 def add_database_to_parameter_store(
     database_name: str,

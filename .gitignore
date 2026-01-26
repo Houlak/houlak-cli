@@ -9,4 +9,24 @@ venv/
 .env
 .DS_Store
 
+# Local development
+*.local
+.idea/
+.vscode/
+.python-version
+*.swp
+*.swo
+*~
+
+# Testing
+.coverage
+htmlcov/
+.tox/
+
+# OS
+.DS_Store
+Thumbs.db
+
+
+
 

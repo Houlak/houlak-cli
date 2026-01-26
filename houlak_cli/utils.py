@@ -3,7 +3,7 @@
 import json
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from rich.console import Console
 
@@ -11,7 +11,7 @@ console = Console()
 
 
 def run_command(
-    command: list[str],
+    command: List[str],
     capture_output: bool = True,
     check: bool = False,
     timeout: Optional[int] = None,
@@ -111,5 +111,7 @@ def find_available_port(start_port: int, max_attempts: int = 10) -> Optional[int
         if not is_port_in_use(port):
             return port
     return None
+
+
 
 

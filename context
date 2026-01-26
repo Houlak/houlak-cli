@@ -1,0 +1,122 @@
+# Houlak CLI - Context Document
+
+## Propósito del Proyecto
+
+`houlak-cli` es una herramienta de línea de comandos (CLI) para uso interno de la empresa Houlak. Su propósito es facilitar a los desarrolladores la realización de tareas comunes relacionadas con AWS, abstrayendo la complejidad de estas operaciones y permitiendo que los desarrolladores se concentren en su trabajo sin necesidad de entender los detalles internos de AWS.
+
+## Características Principales
+
+### Instalación
+- La herramienta está disponible desde un repositorio privado de GitHub
+- Se instala fácilmente usando pip: `pip install git+https://github.com/Houlak/houlak-cli.git`
+- Soporta instalación en modo desarrollo para pruebas locales
+
+### Arquitectura
+- Desarrollada en Python 3.8+
+- Utiliza Typer como framework de CLI
+- Utiliza Rich para mejorar la presentación en consola
+- Se apoya en AWS CLI y AWS Session Manager Plugin
+- Trabaja con perfiles de AWS configurados localmente en `~/.aws/config`
+
+## Herramientas Actuales
+
+### Conexión a Bases de Datos
+La herramienta actual permite conectarse a bases de datos RDS previamente configuradas por un administrador en AWS Systems Manager Parameter Store. Las características incluyen:
+
+- **Bastion Host**: Utiliza una instancia EC2 como bastion host para establecer conexiones seguras
+- **Session Manager**: Usa AWS Session Manager en lugar de SSH tradicional, eliminando la necesidad de claves SSH y puertos expuestos
+- **Túnel Persistente**: Cuando se ejecuta el comando `db-connect`, la consola queda ocupada manteniendo activo el túnel de conexión
+- **Transparencia**: Al conectarse desde herramientas de bases de datos (DBeaver, TablePlus, etc.), no es necesario especificar el bastion host; la herramienta maneja esto automáticamente
+- **Configuración Centralizada**: Los administradores configuran las bases de datos en Parameter Store, y los desarrolladores las usan sin preocuparse por los detalles de conexión
+
+### Comandos Disponibles
+
+**Comandos de Configuración** (trabajan con perfiles de AWS):
+- `config`: Ejecuta el wizard de configuración para establecer el perfil de AWS
+- `config-list`: Lista todos los perfiles de AWS configurados localmente
+- `config-current`: Muestra la configuración actual de houlak-cli
+
+**Comandos de Base de Datos**:
+- `db-connect`: Conecta a una base de datos a través del Session Manager
+- `db-list`: Lista las bases de datos disponibles
+
+**Comandos Administrativos**:
+- `admin-db-add`: Agrega una configuración de base de datos al Parameter Store (solo para administradores)
+
+## Herramientas Futuras
+
+Esta es una plataforma extensible diseñada para crecer. En el futuro se agregarán más herramientas y comandos para facilitar otras operaciones comunes de AWS y flujos de trabajo de desarrollo.
+
+## Guía de Estilo Visual
+
+### Principios de Diseño de Mensajes
+La herramienta sigue una guía de estilo visual consistente basada en `paigo-cli`:
+
+1. **Colores**:
+   - Cyan: Para nombres de comandos, títulos y elementos destacados
+   - Green: Para valores, confirmaciones y estados exitosos
+   - Yellow: Para advertencias y tips
+   - Red: Para errores
+   - Magenta: Para información secundaria
+   - Dim/Gray: Para información menos importante
+
+2. **Indicadores Visuales**:
+   - ✓ (checkmark): Operaciones exitosas
+   - ✗ (cross): Operaciones fallidas
+   - ⚠ (warning): Advertencias
+   - 🔍 (magnifying glass): Búsquedas/listados
+   - 💡 (light bulb): Tips y sugerencias
+   - ➕ (plus): Acciones de agregar
+   - 🚀 (rocket): Bienvenida/inicio
+
+3. **Formato de Mensajes**:
+   - Usar paneles de Rich para mensajes de bienvenida importantes
+   - Usar tablas de Rich para listar información estructurada
+   - Incluir separadores visuales claros entre secciones
+   - Proporcionar feedback claro sobre el estado de las operaciones
+   - Siempre incluir tips útiles después de listar información
+
+4. **Consistencia**:
+   - Todos los mensajes deben seguir esta guía de estilo
+   - Los nuevos comandos deben mantener el mismo nivel de calidad visual
+   - Los errores deben ser descriptivos y sugerir soluciones
+
+## Stack Tecnológico
+
+- **Python**: 3.8+
+- **Typer**: Framework de CLI con soporte para autocompletado
+- **Rich**: Librería para output enriquecido en terminal
+- **Boto3**: SDK de AWS para Python
+- **PyYAML**: Manejo de archivos YAML
+
+## Desarrollo Local
+
+Para desarrollar y probar cambios localmente sin necesidad de instalar desde el repositorio:
+
+```bash
+# Crear entorno virtual
+python3 -m venv venv
+source venv/bin/activate  # En Windows: venv\Scripts\activate
+
+# Instalar en modo desarrollo
+pip install -e .
+
+# La herramienta estará disponible inmediatamente con cualquier cambio
+houlak-cli --help
+```
+
+## Convenciones del Proyecto
+
+- Los comandos usan guiones para separar palabras (e.g., `db-connect`, `config-list`)
+- Los comandos relacionados usan prefijos comunes (e.g., `db-*`, `config-*`, `admin-*`)
+- Las opciones cortas usan guión simple (e.g., `-e`, `-p`, `-v`)
+- Las opciones largas usan doble guión (e.g., `--env`, `--port`, `--version`)
+- Los comandos administrativos usan el prefijo `admin-` para claridad
+
+## Seguridad
+
+- No se requieren claves SSH
+- Autenticación basada en IAM
+- Auditoría completa a través de CloudTrail
+- Las credenciales se manejan a través de AWS SSO
+- No se exponen puertos SSH

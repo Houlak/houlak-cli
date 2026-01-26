@@ -4,7 +4,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="houlak-cli",
-    version="0.1.0",
+    version="0.1.1",
     packages=find_packages(),
     install_requires=[
         "typer[all]>=0.9.0",
@@ -19,5 +19,7 @@ setup(
     },
     python_requires=">=3.8",
 )
+
+
 
 

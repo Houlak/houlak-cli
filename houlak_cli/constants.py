@@ -4,7 +4,7 @@ from pathlib import Path
 
 # Application info
 APP_NAME = "houlak-cli"
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.1.1"
 
 # AWS Configuration
 DEFAULT_REGION = "us-east-1"
@@ -45,5 +45,7 @@ SSM_PLUGIN_INSTALL_URL = "https://docs.aws.amazon.com/systems-manager/latest/use
 # AWS SSO Configuration
 DEFAULT_SSO_START_URL = "https://houlak.awsapps.com/start"
 DEFAULT_SSO_REGION = "us-east-1"
+
+
 
 
