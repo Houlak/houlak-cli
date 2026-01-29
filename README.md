@@ -30,7 +30,9 @@ Before using `houlak-cli`, you need:
 - **pipx** - Recommended for isolated CLI installation. [Installation Guide](https://pipx.pypa.io/stable/installation/)
 - **AWS CLI v2** - [Installation Guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
 - **AWS Session Manager Plugin** - [Installation Guide](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html)
-- **AWS Profile Configuration** - `houlak-cli` is based on AWS profiles configured locally in `~/.aws/config`. You can configure it manually or use the `config` command.
+- **AWS Profile Configuration** - `houlak-cli` uses AWS profiles configured locally in `~/.aws/config`. You can either:
+  - Use the `config-aws-profile` command to set up a profile through the interactive wizard
+  - Use your existing AWS profiles if already configured via `aws configure` or `aws configure sso`
 
 ## Installation
 
@@ -80,13 +82,45 @@ houlak-cli -v
 
 ### 1. Initial Configuration
 
-**Important**: `houlak-cli` is based on AWS profiles configured locally in `~/.aws/config`. The first step is to have your AWS profile configured for the account you want to connect to.
+**Important**: `houlak-cli` uses AWS profiles configured locally in `~/.aws/config`. You have two options:
 
-Run the configuration wizard to set up your AWS profile:
+#### Option A: Use Your Existing AWS Profiles (Recommended)
+
+If you already have AWS profiles configured (via `aws configure` or `aws configure sso`), you can skip the configuration step and use your profiles directly.
+
+You can specify your AWS profile in multiple ways (just like AWS CLI):
+
+**Method 1: Using the --profile flag**
+```bash
+houlak-cli db-connect --database hk-postgres-dev --profile your-profile-name
+```
+
+**Method 2: Using the AWS_PROFILE environment variable**
+```bash
+export AWS_PROFILE=your-profile-name
+houlak-cli db-connect --database hk-postgres-dev
+```
+
+**Method 3: Using the AWS_DEFAULT_PROFILE environment variable**
+```bash
+export AWS_DEFAULT_PROFILE=your-profile-name
+houlak-cli db-connect --database hk-postgres-dev
+```
+
+**List your configured profiles:**
+```bash
+houlak-cli config-list
+```
+
+#### Option B: Configure a New Profile with houlak-cli
+
+If you need to set up a new AWS profile, run the configuration wizard:
 
 ```bash
-houlak-cli config
+houlak-cli config-aws-profile
 ```
+
+**Note**: This command is **only needed the first time** you set up a profile, or when adding a new profile. Once configured, your profile will be saved in `~/.aws/config` and can be reused in all subsequent commands.
 
 The wizard will guide you through:
 
@@ -99,19 +133,31 @@ The wizard will guide you through:
 Connect to a database by specifying its name from Parameter Store:
 
 ```bash
-# Connect to a database using its name
-houlak-cli db-connect --database hk-postgres-dev
-
-# Connect with a different AWS profile
+# Method 1: Using --profile flag
 houlak-cli db-connect --database hk-postgres-dev --profile my-profile
 
+# Method 2: Using AWS_PROFILE environment variable
+export AWS_PROFILE=my-profile
+houlak-cli db-connect --database hk-postgres-dev
+
+# Method 3: Using AWS_DEFAULT_PROFILE environment variable
+export AWS_DEFAULT_PROFILE=my-profile
+houlak-cli db-connect --database hk-postgres-dev
+
 # Connect with custom port
-houlak-cli db-connect --database hk-mariadb-qa --port 33061
+houlak-cli db-connect --database hk-mariadb-qa --port 33061 --profile my-profile
 ```
+
+**Note**: You must specify an AWS profile using one of the methods above. If no profile is specified, houlak-cli will show an error with instructions.
 
 You can list available databases first:
 
 ```bash
+# Using --profile flag
+houlak-cli db-list --profile my-profile
+
+# Or using AWS_PROFILE environment variable
+export AWS_PROFILE=my-profile
 houlak-cli db-list
 ```
 
@@ -180,17 +226,28 @@ houlak-cli db-connect --database hk-postgres-dev --profile <their-profile>
 
 ## Available Commands
 
-### Configuration Commands
+### AWS Profile Configuration Commands
 
-These commands work with AWS profiles configured locally:
+These commands help you manage AWS CLI profiles for use with houlak-cli. **Note**: If you already have AWS profiles configured via `aws configure` or `aws configure sso`, you can skip these commands and directly use your profiles with the `--profile` flag or environment variables (`AWS_PROFILE` or `AWS_DEFAULT_PROFILE`).
 
-#### `houlak-cli config`
+#### `houlak-cli config-aws-profile`
 
-Run the interactive configuration wizard to set up your AWS profile.
+Run the interactive configuration wizard to set up a new AWS CLI profile for houlak-cli.
 
 ```bash
-houlak-cli config
+houlak-cli config-aws-profile
 ```
+
+**Important**: This command is **only needed the first time** you set up a profile, or when adding a new profile. Once configured, your profile will be permanently saved in `~/.aws/config` and can be reused in all subsequent commands without running this wizard again.
+
+**When to use this**: 
+- First time setup - when you don't have any AWS profiles configured yet
+- Adding a new AWS account/profile to your configuration
+- If you prefer an interactive wizard instead of using `aws configure` or `aws configure sso`
+
+**When NOT to use this**: 
+- If you already have AWS profiles configured and working
+- For daily database connections (just use your existing profile)
 
 #### `houlak-cli config-list`
 
@@ -200,12 +257,14 @@ List all AWS profiles configured locally in `~/.aws/config`.
 houlak-cli config-list
 ```
 
-#### `houlak-cli config-current`
+This shows all available profiles that you can use with the `--profile` flag.
 
-Display current AWS profile configuration for houlak-cli.
+#### `houlak-cli config-current-profile`
+
+Display current AWS profile configuration used by houlak-cli.
 
 ```bash
-houlak-cli config-current
+houlak-cli config-current-profile
 ```
 
 ### Database Commands
@@ -220,29 +279,62 @@ Connect to a database through Session Manager via bastion host.
 
 **Optional:**
 
-- `--profile`: AWS profile name (default: houlak)
+- `--profile`: AWS profile name
 - `--port, -p`: Local port number (optional, uses default based on engine)
+
+**AWS Profile Specification:**
+
+You **must** specify an AWS profile using one of these methods (same as AWS CLI):
+1. `--profile` flag
+2. `AWS_PROFILE` environment variable
+3. `AWS_DEFAULT_PROFILE` environment variable
+
+If none is provided, an error will be shown with instructions.
 
 **Examples:**
 
 ```bash
-# Connect to a database
-houlak-cli db-connect --database hk-postgres-dev
-
-# Connect with a specific profile
+# Method 1: Using --profile flag
 houlak-cli db-connect --database hk-postgres-dev --profile my-profile
 
-# Connect with custom port
-houlak-cli db-connect --database hk-mariadb-qa --port 33061
+# Method 2: Using AWS_PROFILE environment variable
+export AWS_PROFILE=my-profile
+houlak-cli db-connect --database hk-postgres-dev
+
+# Method 3: Using AWS_DEFAULT_PROFILE environment variable  
+export AWS_DEFAULT_PROFILE=my-profile
+houlak-cli db-connect --database hk-postgres-dev
+
+# With custom port
+houlak-cli db-connect --database hk-mariadb-qa --port 33061 --profile my-profile
 ```
+
+**Note**: The `--profile` flag accepts any AWS profile configured in your `~/.aws/config` file, whether created via `aws configure`, `aws configure sso`, or `houlak-cli config-aws-profile`.
 
 #### `houlak-cli db-list [--profile PROFILE]`
 
 List all available databases from Parameter Store.
 
+**AWS Profile Specification:**
+
+You **must** specify an AWS profile using one of these methods:
+1. `--profile` flag
+2. `AWS_PROFILE` environment variable
+3. `AWS_DEFAULT_PROFILE` environment variable
+
+**Examples:**
+
 ```bash
-houlak-cli db-list
+# Using --profile flag
 houlak-cli db-list --profile my-profile
+
+# Using AWS_PROFILE environment variable
+export AWS_PROFILE=my-profile
+houlak-cli db-list
+
+# Using AWS_DEFAULT_PROFILE environment variable
+export AWS_DEFAULT_PROFILE=my-profile
+houlak-cli db-list
 ```
 
 ### Admin Commands

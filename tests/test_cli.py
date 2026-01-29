@@ -24,11 +24,13 @@ class TestCLICommands:
     @patch("houlak_cli.cli.connect_to_database")
     def test_db_connect_command(self, mock_connect):
         """Test db-connect command."""
-        result = runner.invoke(app, ["db-connect", "postgres", "--env", "dev"])
+        result = runner.invoke(app, ["db-connect", "--database", "some-db", "--profile", "test-profile"])
         
-        # Command should be called (may exit with error if connection fails)
-        # We just verify the function was called
-        assert mock_connect.called
+        # Mock the expected database connection
+        mock_connect.assert_called_once_with(database_name="some-db", profile="test-profile", port=None)
+        
+        # Verify the command executed successfully
+        assert result.exit_code == 0
     
     @patch("houlak_cli.cli.list_available_databases")
     def test_list_command(self, mock_list):

@@ -1,5 +1,6 @@
 """Main CLI interface for houlak-cli using Typer."""
 
+import os
 import sys
 from typing import Optional
 
@@ -9,7 +10,7 @@ from rich.panel import Panel
 
 from houlak_cli.admin import add_database_to_parameter_store, require_admin
 from houlak_cli.aws_helper import list_available_databases
-from houlak_cli.config import config
+from houlak_cli.config import config  # This imports the Config instance
 from houlak_cli.constants import APP_VERSION
 from houlak_cli.db_connect import connect_to_database
 from houlak_cli.profile_helper import list_aws_profiles
@@ -32,7 +33,7 @@ def main_callback(
         False,
         "--version",
         "-v",
-        help="Show version information",
+        help="Show version information.",
     ),
 ):
     """Main callback - shows welcome message if no command provided."""
@@ -46,10 +47,12 @@ def main_callback(
         welcome_message = Panel.fit(
             "[bold cyan]🚀 Welcome to Houlak CLI![/bold cyan]\n\n"
             "A comprehensive toolkit for developers to interact with AWS services.\n\n"
-            "[yellow]Configuration Commands:[/yellow]\n"
-            "  • [cyan]config[/cyan] - Configure AWS profile for houlak-cli\n"
-            "  • [cyan]config-list[/cyan] - List AWS profiles configured locally\n"
-            "  • [cyan]config-current[/cyan] - Show current AWS profile configuration\n\n"
+            "[yellow]AWS Profile Configuration Commands:[/yellow]\n"
+            "  • [cyan]config-aws-profile[/cyan] - Configure AWS CLI profile for houlak-cli\n"
+            "  • [cyan]config-list[/cyan] - List all AWS profiles configured locally\n"
+            "\n"
+            "[dim]Note: If you already have AWS profiles configured via 'aws configure',\n"
+            "you can use them directly with the --profile flag (e.g., --profile my-profile)[/dim]\n\n"
             "[yellow]Database Commands:[/yellow]\n"
             "  • [cyan]db-connect[/cyan] - Connect to a database using its name from Parameter Store\n"
             "  • [cyan]db-list[/cyan] - List available databases\n\n"
@@ -64,16 +67,131 @@ def main_callback(
         sys.exit(0)
 
 
-@app.command()
-def config():
-    """Run setup wizard to configure AWS profile for houlak-cli."""
+@app.command(name="db-list")
+def db_list(
+    profile: Optional[str] = typer.Option(None, "--profile", help="AWS profile (or set AWS_PROFILE/AWS_DEFAULT_PROFILE env var)"),
+):
+    """List databases available for connection using the db-connect command.
+    
+    AWS Profile can be specified via:
+      • --profile flag
+      • AWS_PROFILE environment variable
+      • AWS_DEFAULT_PROFILE environment variable
+    """
+    # Resolve profile from --profile flag or environment variables
+    resolved_profile = profile or os.environ.get('AWS_PROFILE') or os.environ.get('AWS_DEFAULT_PROFILE')
+    
+    if not resolved_profile:
+        console.print("❌ [bold red]AWS profile not specified[/bold red]\n")
+        console.print("Please specify a profile using one of these methods:")
+        console.print("  • Use --profile flag: [cyan]houlak-cli db-list --profile <profile-name>[/cyan]")
+        console.print("  • Set AWS_PROFILE: [cyan]export AWS_PROFILE=<profile-name>[/cyan]")
+        console.print("  • Set AWS_DEFAULT_PROFILE: [cyan]export AWS_DEFAULT_PROFILE=<profile-name>[/cyan]")
+        console.print("\n💡 List available profiles: [cyan]houlak-cli config-list[/cyan]")
+        sys.exit(1)
+    
+    console.print("\n🔍 [bold]Listing available databases...[/bold]\n")
+    
+    databases = list_available_databases(resolved_profile)
+    
+    if not databases:
+        console.print("⚠️  No databases found in Parameter Store.")
+        console.print("\n💡 Tip: Make sure you have:")
+        console.print(f"   - Valid AWS session (run 'aws sso login --profile {profile}')")
+        console.print("   - Access to Parameter Store")
+        return
+    
+    from rich.table import Table
+    
+    table = Table(title="Available Databases")
+    table.add_column("Name", style="cyan")
+    table.add_column("Project", style="green")
+    table.add_column("Engine", style="yellow")
+    table.add_column("Environment", style="magenta")
+    table.add_column("Region", style="blue")
+    
+    for db in databases:
+        table.add_row(
+            db.get("name", "N/A"),
+            db.get("project", "N/A"),
+            db.get("engine", "N/A"),
+            db.get("environment", "N/A"),
+            db.get("region", "N/A"),
+        )
+    
+    console.print(table)
+    console.print(f"\n💡 Connect to a database: [cyan]houlak-cli db-connect <engine> --env <env>[/cyan]")
+
+@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
+def db_connect(
+    ctx: typer.Context,
+    database_name: str = typer.Option(..., "--database", "-d", help="Database name from Parameter Store"),
+    profile: Optional[str] = typer.Option(None, "--profile", help="AWS profile to use (or set AWS_PROFILE/AWS_DEFAULT_PROFILE env var)"),
+    port: Optional[int] = typer.Option(None, "--port", "-p", help="Local port (optional, uses default based on engine)"),
+):
+    """Connect to database through Session Manager via bastion host.
+    
+    AWS Profile can be specified via:
+      • --profile flag
+      • AWS_PROFILE environment variable
+      • AWS_DEFAULT_PROFILE environment variable
+      • AWS_PROFILE=my-profile as additional argument
+    
+    If none is provided, an error will be shown.
+    """
+    # Parse additional arguments for AWS_PROFILE assignments to handle inline ENV syntax
+    if ctx.args:
+        # Update environment variables if inline arguments contain AWS_PROFILE or AWS_DEFAULT_PROFILE
+        inline_env_vars = {
+            kv.split('=', 1)[0].strip(): kv.split('=', 1)[1].strip()
+            for kv in ctx.args if '=' in kv
+            if kv.split('=', 1)[0].strip() in ['AWS_PROFILE', 'AWS_DEFAULT_PROFILE']
+        }
+        os.environ.update(inline_env_vars)
+
+    # Resolve AWS profile with a consistent precedence order: --profile > inline > env vars
+    resolved_profile = profile or inline_env_vars.get('AWS_PROFILE') or os.environ.get('AWS_PROFILE') or os.environ.get('AWS_DEFAULT_PROFILE')
+
+    if not resolved_profile:
+        console.print("❌ [bold red]AWS profile not specified[/bold red]\n")
+        console.print("Please specify a profile using one of these methods:")
+        console.print("  • Use --profile flag: [cyan]houlak-cli db-connect -d <db-name> --profile <profile-name>[/cyan]")
+        console.print("  • Set AWS_PROFILE: [cyan]export AWS_PROFILE=<profile-name>[/cyan]")
+        console.print("  • Set AWS_DEFAULT_PROFILE: [cyan]export AWS_DEFAULT_PROFILE=<profile-name>[/cyan]")
+        console.print("  • Pass as argument: [cyan]houlak-cli db-connect -d <db-name> AWS_PROFILE=<profile-name>[/cyan]")
+        console.print("\n💡 List available profiles: [cyan]houlak-cli config-list[/cyan]")
+        sys.exit(1)
+    if not resolved_profile:
+        console.print("❌ [bold red]AWS profile not specified[/bold red]\n")
+        console.print("Please specify a profile using one of these methods:")
+        console.print("  • Use --profile flag: [cyan]houlak-cli db-connect -d <db-name> --profile <profile-name>[/cyan]")
+        console.print("  • Set AWS_PROFILE: [cyan]export AWS_PROFILE=<profile-name>[/cyan]")
+        console.print("  • Set AWS_DEFAULT_PROFILE: [cyan]export AWS_DEFAULT_PROFILE=<profile-name>[/cyan]")
+        console.print("  • Pass as argument: [cyan]houlak-cli db-connect -d <db-name> AWS_PROFILE=<profile-name>[/cyan]")
+        console.print("\n💡 List available profiles: [cyan]houlak-cli config-list[/cyan]")
+        sys.exit(1)
+    
+    connect_to_database(
+        database_name=database_name,
+        profile=resolved_profile,
+        port=port,
+    )
+
+
+@app.command(name="config-aws-profile", help="Configure an AWS CLI profile for the tool (use it only if needed).")
+def config_aws_profile():
+    """Configure AWS CLI profile for use with houlak-cli.
+
+    This command helps you set up an AWS CLI profile that houlak-cli will use.
+    If you already have AWS profiles configured (via 'aws configure sso' or 'aws configure'),
+    you can skip this command and use your existing profiles directly with the --profile flag.
+
+    [dim]Hint: Use this command only if you need to configure your AWS profile.[/dim]
+    """
     run_setup_wizard()
 
 
-@app.command(name="config-current")
-def config_current():
-    """Show current AWS profile configuration for houlak-cli."""
-    config.show()
+
 
 
 @app.command(name="config-list")
@@ -116,58 +234,6 @@ def config_list():
     
     console.print(table)
     console.print(f"\n💡 Use a profile: [cyan]houlak-cli db-connect --profile <profile-name> --env <env>[/cyan]")
-
-
-@app.command()
-def db_connect(
-    database_name: str = typer.Option(..., "--database", "-d", help="Database name from Parameter Store"),
-    profile: str = typer.Option("houlak", "--profile", help="AWS profile to use"),
-    port: Optional[int] = typer.Option(None, "--port", "-p", help="Local port (optional, uses default based on engine)"),
-):
-    """Connect to database through Session Manager via bastion host."""
-    connect_to_database(
-        database_name=database_name,
-        profile=profile,
-        port=port,
-    )
-
-
-@app.command(name="db-list")
-def db_list(
-    profile: str = typer.Option("houlak", "--profile", help="AWS profile"),
-):
-    """List available databases from Parameter Store."""
-    console.print("\n🔍 [bold]Listing available databases...[/bold]\n")
-    
-    databases = list_available_databases(profile)
-    
-    if not databases:
-        console.print("⚠️  No databases found in Parameter Store.")
-        console.print("\n💡 Tip: Make sure you have:")
-        console.print(f"   - Valid AWS session (run 'aws sso login --profile {profile}')")
-        console.print("   - Access to Parameter Store")
-        return
-    
-    from rich.table import Table
-    
-    table = Table(title="Available Databases")
-    table.add_column("Name", style="cyan")
-    table.add_column("Project", style="green")
-    table.add_column("Engine", style="yellow")
-    table.add_column("Environment", style="magenta")
-    table.add_column("Region", style="blue")
-    
-    for db in databases:
-        table.add_row(
-            db.get("name", "N/A"),
-            db.get("project", "N/A"),
-            db.get("engine", "N/A"),
-            db.get("environment", "N/A"),
-            db.get("region", "N/A"),
-        )
-    
-    console.print(table)
-    console.print(f"\n💡 Connect to a database: [cyan]houlak-cli db-connect <engine> --env <env>[/cyan]")
 
 
 # Comentado temporalmente

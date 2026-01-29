@@ -60,7 +60,8 @@ def connect_to_database(
         profile: AWS profile
         port: Local port (optional)
     """
-    console.print(f"\n🔍 Looking for database: [cyan]{database_name}[/cyan]\n")
+    console.print(f"\n🔍 Looking for database: [cyan]{database_name}[/cyan]")
+    console.print(f"📋 Using AWS profile: [cyan]{profile}[/cyan]\n")
     
     # Validate AWS session
     if not validate_aws_session(profile):
@@ -151,9 +152,48 @@ def connect_to_database(
         if process.poll() is not None:
             # Process has terminated, read error
             stdout, stderr = process.communicate()
-            console.print("❌ Port forwarding failed")
-            if stderr:
-                console.print(f"Error: {stderr}")
+            console.print("❌ [bold red]Port forwarding failed to start[/bold red]\n")
+            
+            # Show detailed error information
+            console.print("[red]═══════════════ Error Details ═══════════════[/red]")
+            if stderr and stderr.strip():
+                console.print(f"[yellow]Error Output:[/yellow]")
+                console.print(f"[dim]{stderr.strip()}[/dim]")
+            if stdout and stdout.strip():
+                console.print(f"\n[yellow]Standard Output:[/yellow]")
+                console.print(f"[dim]{stdout.strip()}[/dim]")
+            console.print("[red]════════════════════════════════════════════[/red]\n")
+            
+            # Provide helpful guidance based on error code and content
+            console.print("[yellow]Common causes:[/yellow]")
+            error_code = process.returncode
+            
+            if error_code == 255 or "255" in str(stderr):
+                console.print("  • AWS SSO session expired or invalid")
+                console.print("  • Insufficient permissions to connect to the bastion host")
+                console.print("  • Bastion host is not running or unreachable")
+                console.print("  • Network connectivity issues with AWS Session Manager")
+            elif "TargetNotConnected" in str(stderr):
+                console.print("  • Bastion host is not connected to SSM")
+                console.print("  • SSM Agent may not be running on the bastion host")
+            elif "AccessDenied" in str(stderr):
+                console.print("  • IAM permissions issue - check your role/user permissions")
+                console.print("  • Missing ssm:StartSession permission")
+            else:
+                console.print("  • Network connectivity issues")
+                console.print("  • SSM Session Manager plugin not installed or outdated")
+                console.print("  • Invalid database configuration")
+                console.print(f"  • Unexpected error code: {error_code}")
+            
+            console.print("\n💡 [bold]Troubleshooting steps:[/bold]")
+            console.print(f"  1. Refresh AWS credentials: [cyan]aws sso login --profile {profile}[/cyan]")
+            console.print(f"  2. Verify AWS identity: [cyan]aws sts get-caller-identity --profile {profile}[/cyan]")
+            console.print(f"  3. Check bastion instance status: [cyan]aws ec2 describe-instances --instance-ids {bastion_instance_id} --profile {profile}[/cyan]")
+            console.print(f"  4. Test SSM connectivity: [cyan]aws ssm describe-instance-information --profile {profile}[/cyan]")
+            console.print("  5. Verify Session Manager plugin: [cyan]session-manager-plugin[/cyan]")
+            console.print(f"  6. Check region setting (currently: {region})")
+            console.print("\n")
+            
             sys.exit(1)
         
         # Save connection info
@@ -220,7 +260,33 @@ def connect_to_database(
             # Wait for process to finish naturally
             return_code = process.wait()
             if return_code != 0:
-                console.print(f"\n⚠️  Tunnel process ended with code {return_code}")
+                console.print(f"\n⚠️  [bold yellow]Tunnel process ended unexpectedly with code {return_code}[/bold yellow]\n")
+                
+                # Try to get any remaining output
+                try:
+                    stdout, stderr = process.communicate(timeout=1)
+                    if stderr and stderr.strip():
+                        console.print("[red]═══════════════ Error Details ═══════════════[/red]")
+                        console.print(f"[dim]{stderr.strip()}[/dim]")
+                        console.print("[red]════════════════════════════════════════════[/red]\n")
+                except:
+                    pass
+                
+                # Provide specific guidance for code 255
+                if return_code == 255:
+                    console.print("[yellow]Code 255 typically indicates:[/yellow]")
+                    console.print("  • AWS SSO session expired during the connection")
+                    console.print("  • Bastion host connection lost or became unavailable")
+                    console.print("  • Network connectivity interrupted")
+                    console.print("  • SSM Session Manager connection timeout")
+                    console.print("\n💡 [bold]Recommended actions:[/bold]")
+                    console.print(f"  1. Refresh credentials: [cyan]aws sso login --profile {profile}[/cyan]")
+                    console.print("  2. Check bastion host is still running in AWS Console")
+                    console.print("  3. Verify network connectivity to AWS")
+                    console.print("  4. Try reconnecting: [cyan]houlak-cli db-connect -d {database_name} --profile {profile}[/cyan]")
+                else:
+                    console.print(f"[yellow]Connection ended with error code {return_code}[/yellow]")
+                    console.print("\n💡 Check AWS Session Manager logs for more details")
             else:
                 console.print("\n✅ Tunnel ended naturally")
             
