@@ -4,7 +4,7 @@ from pathlib import Path
 
 # Application info
 APP_NAME = "houlak-cli"
-APP_VERSION = "0.1.1"
+APP_VERSION = "0.2.0"
 
 # AWS Configuration
 DEFAULT_REGION = "us-east-1"
